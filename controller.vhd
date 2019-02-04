@@ -47,19 +47,20 @@ end component;
     
     --Types
     type ST is (get_input,first_layer,second_layer);
-    type weights_f is array (799 downto 0) of STD_LOGIC_VECTOR(12543 downto 0);
+    type weights_f is array (799 downto 0) of STD_LOGIC_VECTOR(16383 downto 0);
     type biases_f is array (799 downto 0) of STD_LOGIC_VECTOR(15 downto 0);
-    type weights_s is array (9 downto 0) of STD_LOGIC_VECTOR(12799 downto 0);
+    type weights_s is array (9 downto 0) of STD_LOGIC_VECTOR(16383 downto 0);
     type biases_s is array (9 downto 0) of STD_LOGIC_VECTOR(15 downto 0);
 
     --Signals
-    signal neuron_xin : STD_LOGIC_VECTOR(12543 downto 0) := (others => '0');
-    signal neuron_win : STD_LOGIC_VECTOR(12543 downto 0) := (others => '0');
-    signal neuron_bias : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
-    signal neuron_yout : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
-	signal xin_first : STD_LOGIC_VECTOR(12543 downto 0) := (others => '0');
-    signal xin_second : STD_LOGIC_VECTOR(12799 downto 0) := (others => '0');
-    signal yout_second : STD_LOGIC_VECTOR(159 downto 0) := (others => '0');
+    signal neuron_xin_first : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
+    signal neuron_win_first : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
+    signal neuron_bias_first : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
+    signal neuron_yout_first : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
+    signal neuron_xin_second : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
+    signal neuron_win_second : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
+    signal neuron_yout_second : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
+    signal network_yout : STD_LOGIC_VECTOR(159 downto 0) := (others => '0');
     signal weights_first : weights_f;
     signal biases_first : biases_f; 
     signal weights_second : weights_s;
@@ -116,10 +117,12 @@ end component;
 
 begin
 neuron1: Neuron 
-    generic map(n => 783)
-    port map(slv_Xin => neuron_xin, slv_Win=>neuron_win, slv_Bias => neuron_bias, clk => clk, O => neuron_yout);
+    generic map(n => 1023)
+    port map(slv_Xin => neuron_xin_first, slv_Win=>neuron_win_first, slv_Bias => neuron_bias_first, clk => clk, O => neuron_yout_first);
 
-
+neuron2: Neuron 
+    generic map(n => 1023)
+    port map(slv_Xin => neuron_xin_second, slv_Win=>neuron_win_second, slv_Bias => neuron_bias_second, clk => clk, O => neuron_yout_second);
 
     process(clk,rst)
     variable state : ST := get_input;
