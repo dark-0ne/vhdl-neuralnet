@@ -49,10 +49,9 @@ component Neuron is
            O : out STD_LOGIC_VECTOR (15 downto 0));
 end component;
 component xinStorage is
-	generic(in_size: integer);
-    Port ( din : in  STD_LOGIC_VECTOR (16*in_size - 1 downto 0);
+    Port ( din : in  STD_LOGIC_VECTOR (895 downto 0);
 				load: in std_logic;
-				idx: in std_logic_vector(1023 downto 0);
+				idx: in std_logic_vector(9 downto 0);
            clk : in  STD_LOGIC;
            dout : out  STD_LOGIC_VECTOR (16383 downto 0));
 end component;
@@ -60,9 +59,10 @@ end component;
     
     --Types
     type ST is (get_input,first_layer,second_layer);
-    type weights_f is array (799 downto 0) of STD_LOGIC_VECTOR(16383 downto 0);
-    type biases_f is array (799 downto 0) of STD_LOGIC_VECTOR(15 downto 0);
-    type weights_s is array (9 downto 0) of STD_LOGIC_VECTOR(16383 downto 0);
+    type weights_f is array (63 downto 0) of STD_LOGIC_VECTOR(16383 downto 0);
+    type biases_f is array (63 downto 0) of STD_LOGIC_VECTOR(15 downto 0);
+	 type outs_f is array (63 downto 0) of STD_LOGIC_VECTOR(15 downto 0);
+    type weights_s is array (9 downto 0) of STD_LOGIC_VECTOR(1023 downto 0);
     type biases_s is array (9 downto 0) of STD_LOGIC_VECTOR(15 downto 0);
 
     --Functions
@@ -115,44 +115,46 @@ end component;
     end function;
 
     --Signals
-	 signal inStore_idx : STD_LOGIC_VECTOR(1023 downto 0) := (others => '0');
+	 signal inStore_idx : STD_LOGIC_VECTOR(9 downto 0) := (others => '0');
 	 signal inStore_load : STD_LOGIC := '0';
- 	 signal first_layer_result_idx : STD_LOGIC_VECTOR(1023 downto 0) := (others => '0');
- 	 signal first_layer_result_load : STD_LOGIC := '0';
     signal neuron_xin_first : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
 	 signal neuron_win_first : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
     signal neuron_bias_first : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
     signal neuron_yout_first : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
-    signal neuron_xin_second : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
-    signal neuron_win_second : STD_LOGIC_VECTOR(16383 downto 0) := (others => '0');
+	 signal neuron_outs_first : outs_f;
+    signal neuron_xin_second : STD_LOGIC_VECTOR(1023 downto 0) := (others => '0');
+    signal neuron_win_second : STD_LOGIC_VECTOR(1023 downto 0) := (others => '0');
     signal neuron_bias_second : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
     signal neuron_yout_second : STD_LOGIC_VECTOR(15 downto 0) := (others => '0');
-    signal weights_first : weights_f := InitFirstWeightsFromFile("first_weights.txt");
-    signal biases_first : biases_f := InitFirstBiasesFromFile("first_biases.txt"); 
-    signal weights_second : weights_s := InitSecondWeightsFromFile("second_weights.txt");
-    signal biases_second : biases_s := InitSecondBiasesFromFile("second_biases.txt");
+    constant weights_first : weights_f := InitFirstWeightsFromFile("first_weights.txt");
+    constant biases_first : biases_f := InitFirstBiasesFromFile("first_biases.txt"); 
+    constant weights_second : weights_s := InitSecondWeightsFromFile("second_weights.txt");
+    constant biases_second : biases_s := InitSecondBiasesFromFile("second_biases.txt");
 
 begin
 in_store: xinStorage
-	generic map(in_size => 56)
 	port map(clk => clk, din => din, load => inStore_load, idx => inStore_idx,dout => neuron_xin_first );
-	
-first_layer_result: xinStorage
-	generic map(in_size => 1)
-	port map(clk => clk, din => neuron_yout_first, load => first_layer_result_load, idx => first_layer_result_idx,dout => neuron_xin_second );
 
 neuron1: Neuron 
     generic map(n => 1023)
     port map(slv_Xin => neuron_xin_first, slv_Win=>neuron_win_first, slv_Bias => neuron_bias_first, clk => clk, O => neuron_yout_first);
 
 neuron2: Neuron 
-    generic map(n => 1023)
+    generic map(n => 63)
     port map(slv_Xin => neuron_xin_second, slv_Win=>neuron_win_second, slv_Bias => neuron_bias_second, clk => clk, O => neuron_yout_second);
+	 
+process(clk) begin
+	if (clk'event and clk = '1') then
+		for i in 0 to 63 loop
+			neuron_xin_second(1023 - i*16 downto 1008 - 16* i) <= neuron_outs_first(i);
+		end loop;
+	end if;
+end process;
 
     process(clk,rst)
     variable state : ST := get_input;
     variable in_count : integer range 0 to 13 := 0;
-    variable first_layer_count : integer range 0 to 799 := 0;
+    variable first_layer_count : integer range 0 to 63 := 0;
     variable second_layer_count : integer range 0 to 9 := 0;
     
     begin
@@ -162,7 +164,7 @@ neuron2: Neuron
         elsif(clk'event and clk='1') then
             if(state = get_input) then
                     inStore_load <= '1';
-						  inStore_idx <= std_logic_vector(to_unsigned(in_count,1024));
+						  inStore_idx <= std_logic_vector(to_unsigned(in_count,10));
                     if(in_count = 13) then
                         in_count := 0;
                         state := first_layer;
@@ -174,9 +176,8 @@ neuron2: Neuron
                         end if;
             elsif(state = first_layer) then
 				    inStore_load <= '0';
-				    first_layer_result_load <= '1';
-					 first_layer_result_idx <= std_logic_vector(to_unsigned(first_layer_count,1024));
-                if(first_layer_count < 799) then
+					 neuron_outs_first(first_layer_count) <= neuron_yout_first;
+                if(first_layer_count < 63) then
                     first_layer_count := first_layer_count + 1;
                     neuron_win_first <= weights_first(first_layer_count);
                     neuron_bias_first <= biases_first(first_layer_count);
