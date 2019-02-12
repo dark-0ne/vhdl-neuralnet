@@ -36,7 +36,6 @@ entity Neuron is
     generic ( n : integer := 0 );
     Port ( slv_Xin, slv_Win : in STD_LOGIC_VECTOR ((n*16)+15 downto 0);
             slv_Bias : in STD_LOGIC_VECTOR(15 downto 0);
-           clk : in STD_LOGIC;
            O : out STD_LOGIC_VECTOR (15 downto 0));
 end Neuron;
 
@@ -47,15 +46,13 @@ architecture Mixed of Neuron is
     end component;
     component sum_calculator
     generic (
-            NINPUTS : integer;
-            IWIDTH  : integer;
-            OWIDTH  : integer
+            ninputs : integer;
+            iwidth  : integer;
+            owidth  : integer
         );
         port (
-            rstN   : in  std_logic;
-            clk    : in  std_logic;
-            d      : in  std_logic_vector(NINPUTS*IWIDTH-1 downto 0);
-            q      : out signed(OWIDTH-1 downto 0)
+            d      : in  std_logic_vector(ninputs*iwidth-1 downto 0);
+            q      : out signed(owidth-1 downto 0)
         );
     end component;
     signal sum : signed(15 downto 0) := x"0000";
@@ -66,8 +63,8 @@ begin
     SIG : sigmoid port map (Y => Y, O => O);
     G1: if n>0 generate
         ADDER : sum_calculator
-            generic map ( NINPUTS => n+1, IWIDTH => 16, OWIDTH => 16)
-            port map ( rstN => '1', clk => clk, d => d, q => sum);  
+            generic map ( ninputs => n+1, iwidth => 16, owidth => 16)
+            port map (d => d, q => sum);  
     end generate G1;  
       
     Xin <= to_vec(slv_Xin);
@@ -83,14 +80,12 @@ begin
         end if;  
     end process;
     
-    process (clk)
+    process (slv_Xin,slv_Win,slv_Bias)
     begin
-        if rising_edge(clk) then
-            if (n<1) then
-                Y <= to_stdlogicvector(to_bitvector(std_logic_vector(signed(slv_Bias)+signed(Xin(0)) * signed(Win(0)))))(27 downto 12);
-            else
-                Y <= std_logic_vector(sum + signed(slv_Bias)); 
-            end if;
+        if (n<1) then
+            Y <= to_stdlogicvector(to_bitvector(std_logic_vector(signed(slv_Bias)+signed(Xin(0)) * signed(Win(0)))))(27 downto 12);
+        else
+            Y <= std_logic_vector(sum + signed(slv_Bias)); 
         end if;
     end process;
 
